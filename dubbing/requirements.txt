@@ -1,0 +1,16 @@
+mlx-audio==0.6.1
+mlx-whisper==0.4.3
+mlx-lm==0.32.2
+fastapi==0.156.1
+uvicorn==0.54.0
+python-multipart==0.0.32
+requests==2.34.2
+beautifulsoup4==4.15.0
+soundfile==0.14.0
+scipy==1.17.1
+opencc-python-reimplemented==0.1.7
+ctranslate2==4.8.3
+sacremoses==0.2.0
+webrtcvad-wheels==2.0.14.post1
+num2words==0.5.14
+text2num==3.1.0

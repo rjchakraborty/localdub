@@ -1,0 +1,57 @@
+name: Publish verified Mac release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing draft release tag (for example v0.1.0)
+        required: true
+        type: string
+permissions:
+  contents: write
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Verify draft identity and download candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$(gh release view "$TAG" --repo "$REPO" --json isDraft --jq .isDraft)" = true
+          mkdir "$RUNNER_TEMP/release"
+          gh release download "$TAG" --repo "$REPO" --dir "$RUNNER_TEMP/release"
+      - name: Verify accepted commit, artifact and successful CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import importlib.util,json,os,pathlib,subprocess
+          spec=importlib.util.spec_from_file_location('release','scripts/release.py')
+          release=importlib.util.module_from_spec(spec);spec.loader.exec_module(release)
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'release'
+          candidate=json.loads((root/'candidate.json').read_text())
+          acceptance=json.loads((root/'acceptance.json').read_text())
+          archive=candidate['archive']
+          assert pathlib.Path(archive).name==archive and archive.endswith('.zip')
+          release.verify_acceptance(candidate,acceptance,root/archive)
+          commit=subprocess.check_output(['git','rev-parse',os.environ['TAG']+'^{commit}'],text=True).strip()
+          assert commit==candidate['commit'] and os.environ['TAG']=='v'+candidate['version']
+          subprocess.run(['git','merge-base','--is-ancestor',commit,'origin/main'],check=True)
+          runs=json.loads(subprocess.check_output(['gh','run','list','--repo',os.environ['REPO'],'--workflow','ci.yml','--commit',commit,'--json','conclusion,event'],text=True))
+          assert any(r['conclusion']=='success' and r['event']=='push' for r in runs), 'Successful main CI required'
+          PY
+      - name: Publish accepted draft
+        run: gh release edit "$TAG" --repo "$REPO" --draft=false
