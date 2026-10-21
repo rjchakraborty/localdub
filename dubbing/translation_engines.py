@@ -61,8 +61,10 @@ class HunyuanTranslator:
 
         # Use title-level context only: neighboring transcript fragments leaked facts.
         prompt=(f'*[Background Information]*\nPodcast title: {self.context}\n\n' if self.context else '')+f'Please translate the following text into {self.language}, taking the provided background information into consideration. Only output the translated result without additional explanation.\n\n*[Source Text]*\n{text}'
-        encoded=self.tokenizer.apply_chat_template([{'role':'user','content':prompt}],tokenize=False,add_generation_prompt=True)
         for attempt in range(2):
+            if attempt:
+                prompt=f'Translate this spoken English fragment into {self.language}. Return only the translation, with no heading, label, explanation or source text. Preserve hesitations and unfinished clauses:\n\n{text}'
+            encoded=self.tokenizer.apply_chat_template([{'role':'user','content':prompt}],tokenize=False,add_generation_prompt=True)
             mx.random.seed(42+attempt)
             chunks=[];final=None
             for result in stream_generate(self.model,self.tokenizer,prompt=encoded,max_tokens=1400,sampler=make_sampler(temp=.7,top_p=.6,top_k=20),logits_processors=make_logits_processors(repetition_penalty=1.05)):
@@ -71,7 +73,7 @@ class HunyuanTranslator:
             problem=translation_problem(text,translated)
             if final is None or final.finish_reason!='stop':problem='Translation did not finish'
             if not problem:return translated
-            self.rejections.append({'source':text,'translation':translated,'attempt':attempt,'reason':problem,'model':self.name,'prompt_mode':'complete_thought'})
+            self.rejections.append({'source':text,'translation':translated,'attempt':attempt,'reason':problem,'model':self.name,'prompt_mode':'complete_thought' if attempt==0 else 'fragment_retry'})
         raise ValueError('Translation failed bounded output validation; rejected candidates retained')
 
 
