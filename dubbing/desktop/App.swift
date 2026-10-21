@@ -142,12 +142,20 @@ final class LineDecoder {
                 let requirements = backend.appendingPathComponent("dubbing/requirements-tested.txt")
                 let hash = SHA256.hash(data: try Data(contentsOf: requirements)).map { String(format: "%02x", $0) }.joined()
                 let receipt = workspace.appendingPathComponent("Runtime/packages-ready.txt")
+                stage = "Checking storage access"
+                detail = "If macOS asks for access to the selected storage, respond to its permission prompt."
+                // Opening a removable-volume file may wait for a system permission dialog.
+                let installedHash = await Task.detached {
+                    try? String(contentsOf: receipt, encoding: .utf8)
+                }.value
+                if cancelled { throw CancellationError() }
+                detail = ""
                 if !fm.fileExists(atPath: python.path) {
                     stage = "1 of 4 · Installing private Python runtime"; progress = 0.05
                     try await command(uv, ["--no-config", "python", "install", "3.11.15", "--no-bin"])
                     try await command(uv, ["--no-config", "venv", "--python", "3.11.15", "--managed-python", workspace.appendingPathComponent("Runtime/venv").path])
                 }
-                if (try? String(contentsOf: receipt, encoding: .utf8)) != hash {
+                if installedHash != hash {
                     stage = "2 of 4 · Installing packages"; progress = 0.15
                     try await command(uv, ["--no-config", "pip", "install", "--python", python.path, "-r", requirements.path])
                     try await command(uv, ["--no-config", "pip", "check", "--python", python.path])
