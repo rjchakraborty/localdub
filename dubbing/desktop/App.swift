@@ -238,7 +238,6 @@ struct LocalWebView: NSViewRepresentable {
         WindowGroup("LocalDub") {
             VStack(spacing: 0) {
                 HStack {
-                    Text("LocalDub").font(.headline)
                     Spacer()
                     Button("Open Exports", action: engine.openExports)
                     Button(engine.running ? "Stop engine" : "Retry / Start") { engine.running ? engine.stop() : engine.start() }
