@@ -21,6 +21,7 @@ guarantee identical voice, emotion or meaning; listen to the result before shari
 - MP3, WAV, WebVTT captions and machine-readable review reports in named,
   versioned export folders.
 - Optional public Podbean episode resolver; separately installed source plugins.
+- Persistent multilingual URL batches, sequential processing, pause/retry and organized local exports.
 - Native Mac window with automatic private Python, package and model setup.
 
 ## Requirements

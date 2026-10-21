@@ -30,9 +30,20 @@ def load():
     return Integrations.model_validate_json(path.read_text()) if path.exists() else Integrations()
 
 
-def set_podbean(enabled):
+def installed():
+    """Inspect package metadata without executing disabled plugin code."""
+    return [{'name': item.name, 'version': item.dist.version if item.dist else None}
+            for item in entry_points(group='localdub.sources')]
+
+
+def set_podbean(enabled, plugins=None):
     config = load()
     config.podbean = enabled
+    if plugins is not None:
+        names = [item['name'] for item in installed()]
+        if len(plugins) > 20 or any(names.count(name) != 1 for name in plugins):
+            raise ValueError('Source adapter is missing or ambiguous')
+        config.plugins = list(dict.fromkeys(plugins))
     path = config_path(); path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix('.tmp')
     temporary.write_text(json.dumps(config.model_dump(), indent=2))

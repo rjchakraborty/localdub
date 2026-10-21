@@ -83,10 +83,12 @@ def test_unsupported_or_ambiguous_podbean_metadata_rejected(value):
     with pytest.raises(ValueError):podbean_episode('<script type="application/ld+json">'+json.dumps(value)+'</script>','https://example.podbean.com/e/episode/')
 
 
-def test_named_export_is_idempotent_and_never_overwrites_modified_bundle(workspace):
+@pytest.mark.parametrize('batch', [False, True])
+def test_named_export_is_idempotent_and_never_overwrites_modified_bundle(workspace, batch):
     from dubbing.audio import command
     folder=home()/'jobs'/str(uuid4());folder.mkdir(parents=True)
     job={'id':folder.name,'created':1792580000,'status':'completed','options':Options(language='es').model_dump()}
+    if batch:job['batch_id']=str(uuid4())
     (folder/'job.json').write_text(json.dumps(job))
     (folder/'source.json').write_text(json.dumps({'title':'../Sample Episode: Podcast'}))
     sf.write(folder/'dubbed.wav',np.sin(np.arange(24000)*2*np.pi*220/24000)*.1,24000)
@@ -96,6 +98,7 @@ def test_named_export_is_idempotent_and_never_overwrites_modified_bundle(workspa
     first=export_job(folder);second=export_job(folder)
     assert first==second
     target=Path(first['folder']);assert target.is_relative_to(workspace/'Exports')
+    if batch:assert target.is_relative_to(workspace/'Exports'/'Batches'/job['batch_id'])
     mp3=target/'-Sample Episode- Podcast-Spanish.mp3'
     assert mp3.exists() and mp3.read_bytes()==(folder/'dubbed.mp3').read_bytes()
     mp3.write_bytes(b'externally modified bundle')

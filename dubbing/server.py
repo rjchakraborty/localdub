@@ -56,6 +56,9 @@ class Queue:
                 job = read(job_path)
                 if job["status"] != "queued":
                     continue
+                from .batches import runnable
+                if not runnable(job):
+                    continue
                 folder = job_path.parent
                 self.active = job["id"]
                 job.update(status="running", error=None)
@@ -77,7 +80,7 @@ class Queue:
                 finally:
                     save(job_path, job)
                     self.active = self.process = None
-                if os.environ.get('DUBBING_DESKTOP_WORKSPACE') and job['status'] in {'completed','needs_review'}:
+                if (os.environ.get('DUBBING_DESKTOP_WORKSPACE') or job.get('batch_id')) and job['status'] in {'completed','needs_review'}:
                     from .exports import export_job
                     try:
                         exported=await asyncio.to_thread(export_job,folder)
@@ -167,19 +170,54 @@ def preferences():
 
 @app.get('/api/integrations')
 def integrations():
-    from .integrations import load
+    from .integrations import load, installed
     config = load()
-    return {'podbean':config.podbean, 'plugins':config.plugins}
+    return {'podbean':config.podbean, 'plugins':config.plugins, 'installed':installed()}
 
 
 class IntegrationUpdate(BaseModel):
     podbean: bool
+    plugins: list[str] | None = None
 
 
 @app.post('/api/integrations')
 def update_integrations(value: IntegrationUpdate):
     from .integrations import set_podbean
-    return set_podbean(value.podbean).model_dump()
+    try:
+        return set_podbean(value.podbean, value.plugins).model_dump()
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+
+from .batches import BatchRequest
+
+
+@app.post('/api/batches', status_code=201)
+async def create_batch(request: BatchRequest):
+    from .batches import create
+    if request.options.tts_engine == 'indextts25' and not config()['indextts25_available']:
+        raise HTTPException(422, 'IndexTTS runtime is not configured')
+    try:
+        return create(request)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+
+@app.get('/api/batches')
+def batches():
+    from .batches import describe
+    return [describe(read(p)) for p in sorted((home()/'batches').glob('*/batch.json'), reverse=True)]
+
+
+@app.post('/api/batches/{batch_id}/{action}')
+async def batch_control(batch_id: str, action: str):
+    from .batches import control
+    try:
+        return control(batch_id, action)
+    except FileNotFoundError:
+        raise HTTPException(404, 'Batch not found')
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
 
 
 @app.post('/api/preferences')

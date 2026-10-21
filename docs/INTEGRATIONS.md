@@ -50,6 +50,27 @@ Enable only explicitly installed entry-point names in
 ```
 
 Source runs may override this path with an absolute `LOCALDUB_CONFIG`. The native
-app always uses its selected workspace. The UI can toggle Podbean but cannot
-install or enable arbitrary Python packages. No private plugin is shipped in
+app always uses its selected workspace. Source integrations lists installed
+adapters and lets you enable or disable them without loading disabled code.
+Package installation remains a local administrative action. No private plugin is shipped in
 the public source or app bundle.
+
+## Local multilingual batches
+
+Paste up to 200 URLs, enable **Generate both Mandarin and Spanish**, then select
+**Add to queue**. Each unique URL is processed in each selected language by the
+single local worker. A persistent batch manifest survives app restarts; retrying
+the same submission after a lost response does not create duplicate jobs.
+
+Pause stops the next job from starting and lets the current job finish. Resume
+continues queued jobs. Retry failed jobs resumes only failed, interrupted or
+cancelled jobs, retaining completed stages. Completed and listening-review jobs
+are preserved. One failed source does not stop the remaining sources.
+
+Exports are automatic for successful batch jobs:
+`Exports/Batches/<batch-id>/<podcast-title>/<language>/<version>/`.
+Each immutable version includes audio, subtitles, reports and a checksum
+manifest. Original sources remain unchanged. Export failures appear on the job;
+use **Save export bundle** to retry without regenerating audio. Speech checks do
+not establish translation or emotional fidelity; listening review still applies.
+No cloud upload or podcast publishing runs in this workflow.

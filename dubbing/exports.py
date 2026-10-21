@@ -52,6 +52,9 @@ def export_job(folder):
     # home() validates either the selected desktop workspace or developer disk.
     current_home=home()
     root=Path(workspace).resolve()/'Exports' if workspace else current_home/'exports'
+    if job.get('batch_id'):
+        from uuid import UUID
+        root = root/'Batches'/str(UUID(job['batch_id']))
     source=read(folder/'source.json');raw_title=source.get('title') or job.get('filename')
     if job.get('filename') and raw_title==job['filename']:raw_title=Path(raw_title).stem
     title=safe_title(public_metadata(raw_title))
