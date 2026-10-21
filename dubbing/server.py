@@ -190,6 +190,7 @@ def update_integrations(value: IntegrationUpdate):
 
 
 from .batches import BatchRequest
+batch_creation_lock = asyncio.Lock()
 
 
 @app.post('/api/batches', status_code=201)
@@ -198,7 +199,8 @@ async def create_batch(request: BatchRequest):
     if request.options.tts_engine == 'indextts25' and not config()['indextts25_available']:
         raise HTTPException(422, 'IndexTTS runtime is not configured')
     try:
-        return create(request)
+        async with batch_creation_lock:
+            return await asyncio.to_thread(create, request)
     except ValueError as exc:
         raise HTTPException(422, str(exc))
 
