@@ -3,7 +3,7 @@ from importlib.metadata import entry_points
 import json
 import os
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field
 from .settings import home
@@ -50,8 +50,14 @@ def resolve_metadata(source, folder):
         capture = bounded_download(url, page, limit=8*1024*1024)
         return page.read_text(), capture['resolved_url']
 
-    host = urlsplit(source).hostname or ''
-    if config.podbean and (host == 'podbean.com' or host.endswith('.podbean.com')):
+    parts = urlsplit(source)
+    host = parts.hostname or ''
+    audio_suffix = Path(unquote(parts.path)).suffix.lower() in {
+        '.mp3', '.wav', '.m4a', '.aac', '.flac', '.ogg', '.opus', '.aif', '.aiff', '.wma'
+    }
+    # Public enclosure URLs use the same domain as episode pages.
+    # Keep direct audio on the normal bounded media-download path.
+    if config.podbean and not audio_suffix and (host == 'podbean.com' or host.endswith('.podbean.com')):
         from .podbean import podbean_episode
         if urlsplit(source).path in {'', '/'}:
             raise ValueError('Provide a specific Podbean episode URL, not the show homepage')

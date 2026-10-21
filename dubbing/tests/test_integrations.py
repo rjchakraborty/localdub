@@ -23,6 +23,19 @@ def test_toggle_keeps_private_plugin_configuration(config):
     assert config.stat().st_mode & 0o777 == 0o600
 
 
+@pytest.mark.parametrize('url',[
+    'https://mcdn.podbean.com/mf/web/example/audio.mp3',
+    'https://example.podbean.com/media/voice.M4A?token=example',
+    'https://mcdn.podbean.com/mf/web/example/audio%2Emp3',
+])
+def test_podbean_toggle_preserves_direct_audio(config,tmp_path,monkeypatch,url):
+    integrations.set_podbean(True)
+    def unexpected(*args,**kwargs):
+        raise AssertionError('Direct audio must not be fetched as an episode page')
+    monkeypatch.setattr('dubbing.sources.bounded_download',unexpected)
+    assert integrations.resolve_metadata(url,tmp_path) is None
+
+
 def test_disabled_plugins_are_never_loaded(config,monkeypatch,tmp_path):
     class Entry:
         name='private-example'
