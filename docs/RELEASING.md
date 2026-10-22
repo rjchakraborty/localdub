@@ -21,10 +21,29 @@ verifies its ad-hoc signature, and emits a ZIP, checksums and commit-bound
 `candidate.json`. Build caches and outputs must be outside the source checkout.
 The build does not claim bit-for-bit reproducibility across Xcode versions.
 
-Current packaging is **ad-hoc signed and not notarized**. Developer ID signing
-and notarization require the maintainer's appropriate certificate/profile and
-are not implemented yet. Do not describe this as a notarized consumer installer
-or disable Gatekeeper to test it. Disclose the signing state in release notes.
+The initial build is ad-hoc signed. For client distribution, use the trusted Mac's
+Developer ID Application certificate and a validated notarytool Keychain profile:
+
+```sh
+python scripts/notarize.py sign --package /absolute/build/package \
+  --output /absolute/new-signed-package --identity CERTIFICATE_SHA1 --team TEAM_ID
+python scripts/notarize.py notarize --package /absolute/new-signed-package \
+  --profile KEYCHAIN_PROFILE
+```
+
+Create the profile interactively with `xcrun notarytool store-credentials`; never
+put passwords or private keys in source, release assets, CI secrets for public
+PRs, or command-line arguments. The signing command verifies the original archive
+and resource hashes, signs the tools with hardened runtime and secure timestamps,
+updates their resource hashes, then seals the app. Notarization records Apple's
+submission ID before waiting, so a retry waits for the same submission. It requires
+Apple's Accepted result, staples the ticket, checks Gatekeeper, and repackages the
+stapled app. Preserve these receipts. A failed step is not a distributable build;
+never disable Gatekeeper to test it.
+
+Use the signed package's new candidate hash for product acceptance and release
+staging. Earlier acceptance does not cover a changed archive. Notarization verifies
+distribution security; it does not establish dubbing quality or product acceptance.
 
 ## Accept the actual product
 
