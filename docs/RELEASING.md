@@ -84,7 +84,11 @@ installer checksum and acceptance before creating one draft release with assets.
 An uncertain network result must be checked on GitHub before retrying. Inspect
 the draft and uploaded assets, then dispatch **Publish verified Mac release**
 on `main` with its tag. The hosted workflow rechecks artifact/commit acceptance,
-main ancestry and successful CI before publishing the draft. No Mac runner or
+main ancestry and successful CI before publishing the draft. A normal PR merge
+may have a different commit ID from the candidate; it is accepted only when its
+complete Git source tree is identical, the candidate is its ancestor, and the
+tested merge is on main. A CI pass for changed source or a separate branch cannot
+satisfy this check. No Mac runner or
 signing secret is exposed to public PRs.
 
 Check the repository's Actions runs for actual hosted CI and publication results.

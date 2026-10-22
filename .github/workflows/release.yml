@@ -52,8 +52,7 @@ jobs:
           commit=subprocess.check_output(['git','rev-parse',os.environ['TAG']+'^{commit}'],text=True).strip()
           assert commit==candidate['commit'] and os.environ['TAG']=='v'+candidate['version']
           subprocess.run(['git','merge-base','--is-ancestor',commit,'origin/main'],check=True)
-          runs=json.loads(subprocess.check_output(['gh','run','list','--repo',os.environ['REPO'],'--workflow','ci.yml','--commit',commit,'--json','conclusion,event'],text=True))
-          assert any(r['conclusion']=='success' and r['event']=='push' for r in runs), 'Successful main CI required'
+          release.verify_ci_commit(commit,os.environ['REPO'])
           PY
       - name: Publish accepted draft
         run: gh release edit "$TAG" --repo "$REPO" --draft=false

@@ -27,6 +27,31 @@ def clean_commit():
     return output('git','rev-parse','HEAD')
 
 
+def verify_ci_commit(commit,repo):
+    """Accept a main-branch CI run only for the exact candidate source tree.
+
+    A normal PR merge can change the commit ID without changing any source.
+    Both the candidate and its equivalent tested descendant must be on main.
+    """
+    if not re.fullmatch(r'[0-9a-f]{40}',commit):raise ValueError('Invalid candidate commit')
+    tree=output('git','rev-parse',commit+'^{tree}')
+    runs=json.loads(output('gh','run','list','--repo',repo,'--workflow','ci.yml',
+                           '--event','push','--limit','100','--json','headSha,conclusion,event'))
+    for checked in runs:
+        tested=checked.get('headSha','')
+        if (checked.get('conclusion')!='success' or checked.get('event')!='push'
+                or not re.fullmatch(r'[0-9a-f]{40}',tested)):continue
+        try:
+            if output('git','rev-parse',tested+'^{tree}')!=tree:continue
+            for ancestor,descendant in [(commit,tested),(tested,'origin/main')]:
+                run('git','merge-base','--is-ancestor',ancestor,descendant,cwd=ROOT,
+                    stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        except subprocess.CalledProcessError:
+            continue
+        return tested
+    raise ValueError('Successful main CI required for the exact candidate source tree')
+
+
 def verify_acceptance(candidate,acceptance,archive):
     if candidate['commit']!=acceptance.get('commit') or candidate['sha256']!=acceptance.get('sha256'):
         raise ValueError('Acceptance does not match this exact source and installer')

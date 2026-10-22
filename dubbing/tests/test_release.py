@@ -1,9 +1,28 @@
 import importlib.util
 from pathlib import Path
 import pytest
+import json
+import subprocess
 
 spec=importlib.util.spec_from_file_location('release',Path(__file__).resolve().parents[2]/'scripts/release.py')
 release=importlib.util.module_from_spec(spec);spec.loader.exec_module(release)
+
+
+@pytest.mark.parametrize('same_tree,on_main,accepted',[(True,True,True),(False,True,False),(True,False,False)])
+def test_main_ci_requires_identical_source_and_ancestry(monkeypatch,same_tree,on_main,accepted):
+    candidate='a'*40;merged='b'*40
+    def output(*args):
+        if args[0]=='gh':
+            return json.dumps([{'headSha':merged,'conclusion':'success','event':'push'}])
+        return 'candidate-tree' if args[-1].startswith(candidate) or same_tree else 'changed-tree'
+    def run(*args,**kwargs):
+        if not on_main:raise subprocess.CalledProcessError(1,args)
+    monkeypatch.setattr(release,'output',output)
+    monkeypatch.setattr(release,'run',run)
+    if accepted:assert release.verify_ci_commit(candidate,'owner/localdub')==merged
+    else:
+        with pytest.raises(ValueError,match='exact candidate source tree'):
+            release.verify_ci_commit(candidate,'owner/localdub')
 
 
 def test_release_rejects_missing_product_acceptance_and_changed_installer(tmp_path):
