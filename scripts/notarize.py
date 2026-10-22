@@ -142,8 +142,8 @@ def notarize(args):
         'Requires Apple Silicon and macOS 26 or later. Copy LocalDub.app to '
         'Applications, then open it. This app is Developer ID signed and Apple '
         'notarized. First setup downloads Python, dependencies and approximately '
-        '8 GB of models; allow 25 GB free. Inference runs locally. The optional '
-        'private CultureNOW plugin is supplied separately.\n')
+        '8 GB of models; allow 25 GB free. Inference runs locally. Optional '
+        'source plugins are installed separately.\n')
     # The distribution archive must contain the stapled app, not the submission copy.
     archive(package)
     print('Apple accepted notarization. Stapling and Gatekeeper assessment passed.', flush=True)
