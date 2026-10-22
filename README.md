@@ -100,13 +100,31 @@ audio upload is included. See [security and privacy](SECURITY.md).
 ```mermaid
 flowchart LR
   A[File or audio URL] --> B[Validate and decode]
-  B --> C[Whisper transcript]
+  B --> P[Optional bundled voice cleanup]
+  P --> C[Whisper transcript]
   C --> D[Complete-thought translation]
   D --> E[Reference voice synthesis]
   E --> F[Pause-aware assembly]
   F --> G[Independent speech readback]
   G --> H[Review and export]
 ```
+
+Voice cleanup ships with the app and source and is enabled for new jobs. Disable
+it under **Bundled audio plugin**, or choose Gentle (default), Balanced or Strong.
+The choice is saved for future jobs and frozen per queued job. Existing jobs keep
+their original processing when resumed. The plugin reduces steady noise and
+low-frequency rumble, then adjusts level with at most 6 dB gain and peak headroom.
+It preserves duration and pauses; input recordings are never overwritten.
+`source-original.wav` retains the decoded input, `source.wav` feeds recognition
+and voice references, and `audio-preprocessing.json` records settings, hashes and
+signal measurements. Processed audio uses a separate transcript cache identity.
+The plugin is isolated in `dubbing/audio_enhancement.py` behind a lazy loader;
+disabled jobs work without it. No cloud service or extra model is required.
+
+Filtering can change voice texture, particularly at Strong. It cannot remove all
+noise, separate speakers/music, reverse clipping or guarantee better transcripts.
+Compare original and processed audio and review the transcript on difficult input.
+Implementation uses FFmpeg's [noise reduction and high-pass filters](https://ffmpeg.org/ffmpeg-filters.html#afftdn).
 
 The default uses Whisper large-v3-turbo, Hy-MT2 7B and Qwen3-TTS 0.6B through
 MLX. Models use immutable revisions recorded in `dubbing/models.py`; remote model

@@ -95,7 +95,7 @@ def publish_source_review(folder,receipt,options):
     from .settings import home
 
     source=read(folder/"source.json")
-    cache=home()/"transcript-cache"/(transcript_cache_key(source["sha256"],options)+".json")
+    cache=home()/"transcript-cache"/(transcript_cache_key(source.get("processing_sha256", source["sha256"]),options)+".json")
     if not cache.exists():return {"cache_published":False,"cache_warning":"No matching recognition cache exists"}
     canonical=read(cache)
     review=read(folder/receipt["archive"]/"corrections.json")

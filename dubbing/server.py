@@ -22,7 +22,7 @@ from .settings import LANGUAGES, Options, home, options_for_job
 from .sources import MAX_BYTES, public_url
 
 ROOT = Path(__file__).resolve().parent
-FILES = {"dubbed.wav", "dubbed.mp3", "translated.vtt", "report.json", "audit.json", "transcript.json", "translation.json", "source.wav"}
+FILES = {"dubbed.wav", "dubbed.mp3", "translated.vtt", "report.json", "audit.json", "transcript.json", "translation.json", "source.wav", "source-original.wav", "audio-preprocessing.json"}
 TOKEN = secrets.token_urlsafe(32)
 
 

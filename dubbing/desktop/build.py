@@ -33,6 +33,9 @@ def build(output,media,uv,module_cache):
     for name in ['__init__.py','bootstrap.py','service.py']:
         shutil.copyfile(source/'desktop'/name,resources/'Backend/dubbing/desktop'/name)
     tools={'uv':uv,'ffmpeg':media/'installed/bin/ffmpeg','ffprobe':media/'installed/bin/ffprobe'}
+    filters=subprocess.check_output([str(tools['ffmpeg']),'-hide_banner','-filters'],text=True)
+    if not all(name in filters.split() for name in ['highpass','afftdn','apad']):
+        raise ValueError('Rebuild media tools with bundled voice cleanup filters before packaging')
     for name,path in tools.items():
         dependencies=subprocess.check_output(['otool','-L',str(path)],text=True).splitlines()[1:]
         if any(not line.strip().startswith(('/usr/lib/','/System/Library/')) for line in dependencies):
