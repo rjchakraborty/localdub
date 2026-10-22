@@ -108,7 +108,8 @@ class Queue:
                     from .exports import export_job
                     try:
                         exported=await asyncio.to_thread(export_job,folder)
-                        export_fields={'export_folder':exported['folder'],'export_error':None}
+                        export_fields={'export_folder':exported['folder'],'export_error':None,
+                                       'integration_exports':exported.get('integration_exports',[])}
                     except (OSError,ValueError,KeyError) as exc:
                         export_fields={'export_error':'Audio is retained; export needs attention: '+str(exc)}
                     latest=read(job_path)
@@ -474,7 +475,14 @@ def download(job_id: str, name: str):
 async def export(job_id: str):
     from .exports import export_job
     folder=job_folder(job_id)
+    before=read(folder/'job.json')
     try:
-        return await asyncio.to_thread(export_job,folder)
+        result=await asyncio.to_thread(export_job,folder)
+        latest=read(folder/'job.json')
+        if latest['status']==before['status'] and latest.get('finished')==before.get('finished'):
+            latest.update(export_folder=result['folder'],export_error=None,
+                          integration_exports=result.get('integration_exports',[]))
+            save(folder/'job.json',latest)
+        return result
     except (OSError,ValueError,KeyError) as exc:
         raise HTTPException(409,str(exc))

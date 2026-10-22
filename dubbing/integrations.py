@@ -84,3 +84,24 @@ def resolve_metadata(source, folder):
         if result is not None:
             return result
     return None
+
+
+def export_extensions(folder, receipt):
+    """Run enabled trusted export hooks after the generic bundle is committed."""
+    results = []
+    available = entry_points(group='localdub.exports')
+    for name in load().plugins:
+        matches = [item for item in available if item.name == name]
+        if not matches:
+            continue
+        if len(matches) != 1:
+            raise ValueError('Export adapter is ambiguous: '+name)
+        config = home().parent/'Plugins'/name
+        config.mkdir(parents=True, exist_ok=True, mode=0o700)
+        try:
+            result = matches[0].load()(folder, receipt, config)
+        except Exception:
+            raise ValueError('Private export adapter '+name+' could not finish. The generic audio bundle is retained; check its entity mapping and export configuration, then retry export.') from None
+        if result is not None:
+            results.append({'plugin':name, 'result':result})
+    return results

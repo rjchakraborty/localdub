@@ -108,3 +108,17 @@ audio for recovery, so a large catalogue can require substantial disk space.
 Output versions use `<UTC timestamp>-<job ID prefix>-<audio hash prefix>` and
 filenames use the sanitized title and language. Same-title episodes remain
 distinct through their job IDs and immutable manifests.
+
+## Private export extensions
+
+An enabled source plugin can register the same name in `localdub.exports`,
+pointing to `export(job_folder, receipt, config_dir)`. It runs after the normal
+immutable export succeeds, including on retry of an existing export. The receipt
+contains the generic bundle folder and checksums. Return `None` for unrelated
+jobs, or a JSON-serializable result identifying the additional local export.
+The config directory is `<workspace>/Plugins/<plugin-name>`. Disabled plugins
+never execute. Extensions are trusted local code and must validate identities,
+keep paths inside their intended output directory, publish manifests atomically,
+retain earlier versions and make retries idempotent. Exceptions are redacted;
+the generic bundle is retained and the job shows an export error for retry.
+No private layout, mapping or credentials are part of the public app.

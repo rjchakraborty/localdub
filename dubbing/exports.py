@@ -44,6 +44,13 @@ def download_name(folder,name):
 
 
 def export_job(folder):
+    receipt = export_bundle(folder)
+    from .integrations import export_extensions
+    extensions = export_extensions(folder, receipt)
+    return {**receipt, 'integration_exports':extensions} if extensions else receipt
+
+
+def export_bundle(folder):
     job=read(folder/'job.json')
     if job['status'] not in {'completed','needs_review'}:raise ValueError('Finish the job before exporting')
     for name in EXPORT_FILES:
