@@ -11,6 +11,11 @@ requires-python = ">=3.11,<3.12"
 license = "MIT"
 dynamic = ["dependencies"]
 
+[project.urls]
+Homepage = "https://github.com/rjchakraborty/localdub"
+Repository = "https://github.com/rjchakraborty/localdub"
+Issues = "https://github.com/rjchakraborty/localdub/issues"
+
 [tool.setuptools.dynamic]
 dependencies = {file = ["dubbing/requirements.txt"]}
 

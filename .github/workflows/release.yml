@@ -47,6 +47,8 @@ jobs:
           archive=candidate['archive']
           assert pathlib.Path(archive).name==archive and archive.endswith('.zip')
           release.verify_acceptance(candidate,acceptance,root/archive)
+          preview=json.loads(subprocess.check_output(['gh','release','view',os.environ['TAG'],'--repo',os.environ['REPO'],'--json','isPrerelease'],text=True))['isPrerelease']
+          assert preview==(candidate.get('channel','stable')=='preview'), 'Release channel mismatch'
           commit=subprocess.check_output(['git','rev-parse',os.environ['TAG']+'^{commit}'],text=True).strip()
           assert commit==candidate['commit'] and os.environ['TAG']=='v'+candidate['version']
           subprocess.run(['git','merge-base','--is-ancestor',commit,'origin/main'],check=True)

@@ -7,14 +7,16 @@ Chinese or Spanish using on-device speech recognition, translation and reference
 voice synthesis. Review the transcript, repair individual passages and export
 audio with captions.
 
-**Status: pre-release, under product validation. No production release is available yet.**
+**Status: v0.1.0 preview.** [Download the Mac app](https://github.com/rjchakraborty/localdub/releases/tag/v0.1.0)
+or browse [releases](https://github.com/rjchakraborty/localdub/releases).
+The app is ad-hoc signed and not notarized. Human listening acceptance remains pending.
 The application aims to retain phrasing, pauses and vocal character. It does not
 guarantee identical voice, emotion or meaning; listen to the result before sharing.
 
 ## What it does
 
 - Local files and direct HTTP(S) audio links, including public or signed S3/GCS links.
-- Batches of up to 20 inputs, processed sequentially to limit memory pressure.
+- Up to 20 uploaded files or 200 URLs per batch, processed sequentially to limit memory pressure.
 - Mandarin and Spanish output, configurable pacing, pauses and reference voice.
 - Cancel/resume, cached completed stages, transcript/translation corrections and
   selective speech regeneration.
@@ -34,6 +36,14 @@ setup and URL inputs; audio inference runs locally. Optional models download
 separately when selected.
 
 ## Run from source
+
+For the packaged app, download `LocalDub-0.1.0-arm64.zip` from the
+[release page](https://github.com/rjchakraborty/localdub/releases/tag/v0.1.0),
+check it against `SHA256SUMS`, extract it and copy `LocalDub.app` to Applications.
+Choose a workspace on first launch and let setup download Python, packages and
+models. Setup progress appears in the native window. An external SSD is optional.
+The preview is not notarized, so macOS may block opening it; do not disable
+Gatekeeper. Building from source remains available below.
 
 Install Python 3.11 and FFmpeg/ffprobe, then from this checkout:
 
@@ -105,5 +115,6 @@ models. Real inference and native first-launch checks are separate acceptance
 steps. [Contributing](CONTRIBUTING.md) · [release process](docs/RELEASING.md).
 
 Application source is [MIT licensed](LICENSE). Use recordings and reference
-voices you have permission to process. Project repository, release and issue links
-will be added when the personal GitHub destination is confirmed.
+voices you have permission to process. [Repository](https://github.com/rjchakraborty/localdub)
+· [Issues](https://github.com/rjchakraborty/localdub/issues)
+· [Release validation](docs/RELEASE-0.1.0.md).

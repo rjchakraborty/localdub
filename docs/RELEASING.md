@@ -36,6 +36,18 @@ references, and a `checks` object with these booleans, each true only if verifie
 `cancel_resume`, `exports`, `privacy`, `listening_review`, `resource_usage`.
 Do not invent acceptance to unblock a release. A test suite pass is insufficient.
 
+### Preview releases
+
+Use `build --channel preview` to prepare a GitHub prerelease. Record
+`channel: "preview"` in acceptance. All technical checks, privacy review and
+dated evidence are required. Only `first_launch`, `listening_review` and
+`resource_usage` may remain explicitly false, with a nonempty explanation for
+each in the `pending` object. These gaps must appear in the release notes.
+This permits sharing a working preview without claiming stable product
+acceptance. Stable candidates still require every check to pass. The hosted
+publisher verifies that the draft's prerelease flag matches the candidate's
+channel before publishing; it never promotes a preview to stable.
+
 ## Stage and publish
 
 Use a command-scoped authenticated personal GitHub account. Push the reviewed
@@ -56,6 +68,7 @@ on `main` with its tag. The hosted workflow rechecks artifact/commit acceptance,
 main ancestry and successful CI before publishing the draft. No Mac runner or
 signing secret is exposed to public PRs.
 
-The source repository and workflows have not yet been published or executed on
-GitHub. CI/CD configuration validation and local execution must be distinguished
-from an actual hosted run until the first release is completed.
+Check the repository's Actions runs for actual hosted CI and publication results.
+Local tests and workflow syntax checks do not prove a hosted run passed. Keep
+candidate, acceptance, checksums and validation notes as public release assets;
+exclude private recordings, source URLs, plugins, workspace files and credentials.

@@ -12,6 +12,7 @@ import sys
 ROOT=Path(__file__).resolve().parents[1]
 CHECKS={'first_launch','native_ui','batch','file_and_url','mandarin','spanish',
         'cancel_resume','exports','privacy','listening_review','resource_usage'}
+PREVIEW_PENDING={'first_launch','listening_review','resource_usage'}
 
 
 def run(*args,**kwargs):return subprocess.run(list(map(str,args)),check=True,**kwargs)
@@ -29,8 +30,20 @@ def verify_acceptance(candidate,acceptance,archive):
     if candidate['commit']!=acceptance.get('commit') or candidate['sha256']!=acceptance.get('sha256'):
         raise ValueError('Acceptance does not match this exact source and installer')
     if sha(archive)!=candidate['sha256']:raise ValueError('Installer checksum changed')
-    if any(acceptance.get('checks',{}).get(key) is not True for key in CHECKS):
+    channel=candidate.get('channel','stable')
+    if channel not in {'stable','preview'} or acceptance.get('channel','stable')!=channel:
+        raise ValueError('Candidate and acceptance release channels must match')
+    checks=acceptance.get('checks',{})
+    incomplete={key for key in CHECKS if checks.get(key) is not True}
+    if channel=='stable' and incomplete:
         raise ValueError('Product acceptance is incomplete')
+    if channel=='preview':
+        pending=acceptance.get('pending',{})
+        if incomplete-PREVIEW_PENDING:
+            raise ValueError('Technical product acceptance is incomplete')
+        if any(checks.get(key) is not False or not isinstance(pending.get(key),str)
+               or not pending[key].strip() for key in incomplete):
+            raise ValueError('Preview acceptance needs explicit pending checks and reasons')
     if not acceptance.get('evidence') or not acceptance.get('reviewed_at'):
         raise ValueError('Acceptance needs dated evidence references')
     if acceptance.get('secrets_reviewed') is not True:
@@ -52,7 +65,7 @@ def build(args):
         '--media-root',args.media_root,'--uv',args.uv,'--module-cache',args.output/'swift-cache',cwd=ROOT)
     if clean_commit()!=commit:raise ValueError('Source changed during build')
     archive=next((args.output/'package').glob('LocalDub-*-arm64.zip'))
-    candidate={'commit':commit,'version':'0.1.0','archive':archive.name,'sha256':sha(archive),
+    candidate={'commit':commit,'version':'0.1.0','archive':archive.name,'sha256':sha(archive),'channel':args.channel,
                'signing':'ad-hoc; not notarized','product_acceptance':'pending'}
     (archive.parent/'candidate.json').write_text(json.dumps(candidate,indent=2))
     (archive.parent/'SHA256SUMS').write_text(candidate['sha256']+'  '+archive.name+'\n')
@@ -80,14 +93,16 @@ def stage(args):
     # No automatic retry: an uncertain creation must be reconciled on GitHub.
     portable={**acceptance,'evidence':acceptance['evidence']}
     receipt=args.package/'acceptance.json';receipt.write_text(json.dumps(portable,indent=2))
+    preview=['--prerelease'] if candidate.get('channel')=='preview' else []
     run('gh','release','create',tag,str(archive),str(args.package/'candidate.json'),
         str(args.package/'SHA256SUMS'),str(receipt),'--repo',args.repo,'--verify-tag',
-        '--draft','--title','LocalDub '+tag,'--notes-file',args.notes)
+        '--draft','--title','LocalDub '+tag+(' preview' if preview else ''),'--notes-file',args.notes,*preview)
 
 
 if __name__=='__main__':
     p=argparse.ArgumentParser();sub=p.add_subparsers(dest='command',required=True)
     b=sub.add_parser('build')
+    b.add_argument('--channel',choices=['stable','preview'],default='stable')
     for name in ['output','media-root','uv']:b.add_argument('--'+name,type=Path,required=True)
     s=sub.add_parser('stage')
     s.add_argument('--repo',required=True)
