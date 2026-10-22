@@ -6,9 +6,10 @@ from pathlib import Path
 import plistlib
 import shutil
 import subprocess
+import tomllib
 import urllib.request
 
-VERSION='0.1.0'
+VERSION=tomllib.loads((Path(__file__).resolve().parents[2]/'pyproject.toml').read_text())['project']['version']
 UV_VERSION='0.11.19'
 
 
@@ -60,8 +61,8 @@ def build(output,media,uv,module_cache):
     (resources/'bundle-manifest.json').write_text(json.dumps({'version':VERSION,'architecture':'arm64','minimum_macos':'26.0','uv_version':UV_VERSION,'source_uv_sha256':digest(uv),'files':manifest},indent=2))
     subprocess.run(['codesign','--force','--sign','-',str(app)],check=True)
     subprocess.run(['codesign','--verify','--deep','--strict',str(app)],check=True)
-    (output/'Install.txt').write_text('LocalDub 0.1.0\n\nRequires Apple Silicon and macOS 26 or later. Copy LocalDub.app to Applications, then open it. First launch downloads Python, packages and approximately 8 GB of models; allow 25 GB free for setup and working files. No Homebrew or Python installation is required. Model inference stays local.\n\nThis development build is ad-hoc signed and not notarized; macOS may require an explicit Open action. No Gatekeeper settings are changed.\n')
-    archive=output/'LocalDub-0.1.0-arm64.zip'
+    (output/'Install.txt').write_text(f'LocalDub {VERSION}\n\nRequires Apple Silicon and macOS 26 or later. Copy LocalDub.app to Applications, then open it. First launch downloads Python, packages and approximately 8 GB of models; allow 25 GB free for setup and working files. No Homebrew or Python installation is required. Model inference stays local.\n\nThis development build is ad-hoc signed and not notarized; macOS may require an explicit Open action. No Gatekeeper settings are changed.\n')
+    archive=output/f'LocalDub-{VERSION}-arm64.zip'
     subprocess.run(['ditto','-c','-k','--sequesterRsrc','--keepParent',str(app),str(archive)],check=True)
     print(json.dumps({'app':str(app),'archive':str(archive),'sha256':digest(archive),'signing':'ad-hoc; not notarized'},indent=2),flush=True)
     return app

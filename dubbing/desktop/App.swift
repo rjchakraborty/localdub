@@ -155,12 +155,22 @@ final class LineDecoder {
                     try await command(uv, ["--no-config", "python", "install", "3.11.15", "--no-bin"])
                     try await command(uv, ["--no-config", "venv", "--python", "3.11.15", "--managed-python", workspace.appendingPathComponent("Runtime/venv").path])
                 }
-                if installedHash != hash {
-                    stage = "2 of 4 · Installing packages"; progress = 0.15
-                    try await command(uv, ["--no-config", "pip", "install", "--python", python.path, "-r", requirements.path])
-                    try await command(uv, ["--no-config", "pip", "check", "--python", python.path])
-                    try hash.write(to: receipt, atomically: true, encoding: .utf8)
+                let packageArguments = ["--no-config", "pip", "install", "--python", python.path, "-r", requirements.path]
+                stage = installedHash == hash ? "2 of 4 · Checking installed packages" : "2 of 4 · Installing packages"
+                progress = 0.15
+                if installedHash == hash {
+                    do {
+                        try await command(uv, packageArguments + ["--offline"])
+                    } catch {
+                        if cancelled { throw CancellationError() }
+                        stage = "2 of 4 · Repairing local packages"
+                        try await command(uv, packageArguments)
+                    }
+                } else {
+                    try await command(uv, packageArguments)
                 }
+                try await command(uv, ["--no-config", "pip", "check", "--python", python.path])
+                try hash.write(to: receipt, atomically: true, encoding: .utf8)
                 stage = "3 of 4 · Preparing local models"; progress = 0.35
                 try await command(python, ["-B", "-u", "-m", "dubbing.desktop.bootstrap", "--workspace", workspace.path])
                 stage = "4 of 4 · Starting local engine"; progress = 0.98
@@ -250,7 +260,9 @@ struct LocalWebView: NSViewRepresentable {
                         Text("Local podcast dubbing").font(.largeTitle)
                         Text("Mandarin and Spanish · Apple Silicon · macOS 26+").foregroundStyle(.secondary)
                         Text(engine.stage).font(.headline)
-                        if let value = engine.progress { ProgressView(value: value) } else { ProgressView() }
+                        if engine.running {
+                            if let value = engine.progress { ProgressView(value: value) } else { ProgressView() }
+                        }
                         Text(engine.detail).font(.system(.caption, design: .monospaced)).textSelection(.enabled).lineLimit(6)
                         if let error = engine.error { Text(error).foregroundStyle(.red).textSelection(.enabled) }
                         Text("Storage: \(engine.workspace.path)").font(.caption).foregroundStyle(.secondary).textSelection(.enabled)

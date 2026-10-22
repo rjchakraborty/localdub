@@ -7,8 +7,7 @@ Chinese or Spanish using on-device speech recognition, translation and reference
 voice synthesis. Review the transcript, repair individual passages and export
 audio with captions.
 
-**Status: v0.1.0 preview.** [Download the Mac app](https://github.com/rjchakraborty/localdub/releases/tag/v0.1.0)
-or browse [releases](https://github.com/rjchakraborty/localdub/releases).
+**Status: preview.** [Download the Mac app](https://github.com/rjchakraborty/localdub/releases).
 The app is ad-hoc signed and not notarized. Human listening acceptance remains pending.
 The application aims to retain phrasing, pauses and vocal character. It does not
 guarantee identical voice, emotion or meaning; listen to the result before sharing.
@@ -37,8 +36,8 @@ separately when selected.
 
 ## Run from source
 
-For the packaged app, download `LocalDub-0.1.0-arm64.zip` from the
-[release page](https://github.com/rjchakraborty/localdub/releases/tag/v0.1.0),
+For the packaged app, download the versioned `LocalDub-…-arm64.zip` from the
+[release page](https://github.com/rjchakraborty/localdub/releases),
 check it against `SHA256SUMS`, extract it and copy `LocalDub.app` to Applications.
 Choose a workspace on first launch and let setup download Python, packages and
 models. Setup progress appears in the native window. An external SSD is optional.
@@ -117,4 +116,4 @@ steps. [Contributing](CONTRIBUTING.md) · [release process](docs/RELEASING.md).
 Application source is [MIT licensed](LICENSE). Use recordings and reference
 voices you have permission to process. [Repository](https://github.com/rjchakraborty/localdub)
 · [Issues](https://github.com/rjchakraborty/localdub/issues)
-· [Release validation](docs/RELEASE-0.1.0.md).
+· [Release validation](docs/VALIDATION.md).

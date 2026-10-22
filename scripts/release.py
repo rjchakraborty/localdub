@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tomllib
 
 ROOT=Path(__file__).resolve().parents[1]
 CHECKS={'first_launch','native_ui','batch','file_and_url','mandarin','spanish',
@@ -65,7 +66,9 @@ def build(args):
         '--media-root',args.media_root,'--uv',args.uv,'--module-cache',args.output/'swift-cache',cwd=ROOT)
     if clean_commit()!=commit:raise ValueError('Source changed during build')
     archive=next((args.output/'package').glob('LocalDub-*-arm64.zip'))
-    candidate={'commit':commit,'version':'0.1.0','archive':archive.name,'sha256':sha(archive),'channel':args.channel,
+    version=tomllib.loads((ROOT/'pyproject.toml').read_text())['project']['version']
+    if archive.name!=f'LocalDub-{version}-arm64.zip':raise ValueError('Installer version differs from project metadata')
+    candidate={'commit':commit,'version':version,'archive':archive.name,'sha256':sha(archive),'channel':args.channel,
                'signing':'ad-hoc; not notarized','product_acceptance':'pending'}
     (archive.parent/'candidate.json').write_text(json.dumps(candidate,indent=2))
     (archive.parent/'SHA256SUMS').write_text(candidate['sha256']+'  '+archive.name+'\n')
