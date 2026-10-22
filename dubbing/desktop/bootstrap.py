@@ -47,6 +47,27 @@ def file_digest(path):
         return hashlib.file_digest(handle,'sha256').hexdigest()
 
 
+def downloaded_bytes(model, repository):
+    total=0
+    snapshot=repository/'snapshots'/model['revision']
+    for item in model['files']:
+        path=snapshot/item['name']
+        if not path.is_file():
+            checksum=item.get('sha256')
+            if not checksum:
+                continue
+            path=repository/'blobs'/checksum
+            if not path.is_file():
+                path=path.with_name(path.name+'.incomplete')
+        try:
+            if path.resolve().is_relative_to(repository) and path.is_file():
+                total+=min(path.stat().st_size,item['bytes'])
+        except OSError:
+            # Downloads may rename a completed partial between observations.
+            continue
+    return total
+
+
 def installed(receipt, cache):
     if not receipt.is_file():
         return False
@@ -90,8 +111,7 @@ def install(workspace):
             emit('model_start',model=model['model'],index=index,total_models=len(plan))
             task=pool.submit(snapshot_download,model['model'],revision=model['revision'],cache_dir=cache,allow_patterns=[f['name'] for f in model['files']],max_workers=2,token=False)
             while not task.done():
-                blobs=repository/'blobs'
-                downloaded=sum(p.stat().st_size for p in blobs.glob('*') if p.is_file() and not p.is_symlink()) if blobs.exists() else 0
+                downloaded=downloaded_bytes(model,repository)
                 emit('model_progress',model=model['model'],completed_bytes=completed+min(downloaded,model['total_bytes']),total_bytes=required)
                 time.sleep(.5)
             snapshot=Path(task.result()).resolve()
