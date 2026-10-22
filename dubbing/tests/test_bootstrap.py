@@ -1,3 +1,5 @@
+import os
+
 from dubbing.desktop.bootstrap import downloaded_bytes
 
 
@@ -16,9 +18,12 @@ def test_resumed_progress_excludes_orphan_partials_and_duplicate_complete_blob(t
     (snapshot/'tokenizer.safetensors').symlink_to('../../blobs/tokenizer')
     (snapshot/'config.json').write_text('{}')
     assert downloaded_bytes(model,tmp_path)==72
-    (blobs/'weights.1e523acd.incomplete').write_bytes(b'x'*60)
     (blobs/'weights.oldretry.incomplete').write_bytes(b'x'*20)
+    os.utime(blobs/'weights.oldretry.incomplete',ns=(1,1))
+    (blobs/'weights.1e523acd.incomplete').write_bytes(b'x'*60)
     assert downloaded_bytes(model,tmp_path)==102
+    (blobs/'weights.newretry.incomplete').write_bytes(b'x'*10)
+    assert downloaded_bytes(model,tmp_path)==52
     (blobs/'weights.incomplete').rename(blobs/'weights')
     (blobs/'weights').write_bytes(b'x'*100)
     assert downloaded_bytes(model,tmp_path)==142

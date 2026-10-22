@@ -1,4 +1,4 @@
-"""Download pinned desktop models with progress, validation and resumable caches."""
+"""Download pinned desktop models with progress, validation and reusable caches."""
 import argparse
 import fnmatch
 import hashlib
@@ -59,17 +59,18 @@ def downloaded_bytes(model, repository):
             path=repository/'blobs'/checksum
             if not path.is_file():
                 # Hub downloads may add a unique suffix before .incomplete.
-                # Count only this weight's largest partial, never duplicate retries.
+                # Count the latest attempt; older interrupted partials are orphans.
                 partials=[path.with_name(path.name+'.incomplete'),
                           *path.parent.glob(checksum+'.*.incomplete')]
                 sizes=[]
                 for partial in partials:
                     try:
                         if partial.resolve().is_relative_to(repository) and partial.is_file():
-                            sizes.append(partial.stat().st_size)
+                            stamp=partial.stat()
+                            sizes.append((stamp.st_mtime_ns,stamp.st_size))
                     except OSError:
                         continue
-                total+=min(max(sizes,default=0),item['bytes'])
+                total+=min(max(sizes,default=(0,0))[1],item['bytes'])
                 continue
         try:
             if path.resolve().is_relative_to(repository) and path.is_file():

@@ -267,7 +267,7 @@ struct LocalWebView: NSViewRepresentable {
                         if let error = engine.error { Text(error).foregroundStyle(.red).textSelection(.enabled) }
                         Text("Storage: \(engine.workspace.path)").font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                         Button("Choose storage folder", action: engine.chooseStorage).disabled(engine.running)
-                        Text("First setup downloads the private runtime, packages and about 8 GB of models. Downloads resume on retry; completed jobs remain in the selected folder.").font(.callout).foregroundStyle(.secondary)
+                        Text("First setup downloads the private runtime, packages and about 8 GB of models. Completed model downloads are reused on retry; interrupted files may restart. Completed jobs remain in the selected folder.").font(.callout).foregroundStyle(.secondary)
                     }.padding(40).frame(maxWidth: 700, maxHeight: .infinity)
                 }
             }.frame(minWidth: 760, minHeight: 620)
