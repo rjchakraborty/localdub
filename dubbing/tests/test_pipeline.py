@@ -54,7 +54,7 @@ def test_unsafe_source_rejected(url):
         public_url(url)
 
 
-@pytest.mark.parametrize("options", [{"language": "fr"}, {"language": "zh", "temperature": 2}, {"language": "es", "quality": "unknown"}, {"language": "es", "extra": True}])
+@pytest.mark.parametrize("options", [{"language": "unknown"}, {"language": "zh", "temperature": 2}, {"language": "es", "quality": "unknown"}, {"language": "es", "extra": True}])
 def test_configuration_validation(options):
     with pytest.raises(ValidationError):
         Options(**options)

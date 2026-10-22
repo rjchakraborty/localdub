@@ -28,7 +28,7 @@ def build(output,media,uv,module_cache):
         path.mkdir(parents=True)
     source=Path(__file__).resolve().parent.parent
     for path in source.glob('*.py'):shutil.copyfile(path,resources/'Backend/dubbing'/path.name)
-    for name in ['index.html','requirements.txt','requirements-tested.txt']:
+    for name in ['index.html','languages.json','requirements.txt','requirements-tested.txt']:
         shutil.copyfile(source/name,resources/'Backend/dubbing'/name)
     for name in ['__init__.py','bootstrap.py','service.py']:
         shutil.copyfile(source/'desktop'/name,resources/'Backend/dubbing/desktop'/name)
@@ -53,7 +53,10 @@ def build(output,media,uv,module_cache):
         if path.is_file() and not path.name.endswith('.part'):shutil.copyfile(path,notices/'Source'/path.name)
     shutil.copyfile(source/'desktop/build_media.py',notices/'Source/build_media.py')
     (notices/'Third-party-tools.txt').write_text('FFmpeg 9.0.2: https://ffmpeg.org/ (LGPL 2.1+). LAME 4.0: https://lame.sourceforge.io/ (LGPL 2). uv 0.11.19: https://github.com/astral-sh/uv (MIT or Apache 2). Original licenses and corresponding media-tool sources/build instructions are included. Tools communicate with the application as separate processes. Downloaded Python packages/models retain their respective licenses in their installed distributions/model caches.\n')
-    info={'CFBundleExecutable':'PodcastDubbing','CFBundleIdentifier':'app.localdub.desktop','CFBundleName':'LocalDub','CFBundleDisplayName':'LocalDub','CFBundlePackageType':'APPL','CFBundleShortVersionString':VERSION,'CFBundleVersion':'1','LSMinimumSystemVersion':'26.0','NSHighResolutionCapable':True,'NSAppTransportSecurity':{'NSAllowsLocalNetworking':True}}
+    iconset=output/'LocalDub.iconset'
+    subprocess.run(['xcrun','swift','-module-cache-path',str(module_cache),str(source/'desktop/render_icon.swift'),str(iconset)],check=True)
+    subprocess.run(['iconutil','-c','icns',str(iconset),'-o',str(resources/'LocalDub.icns')],check=True)
+    info={'CFBundleExecutable':'PodcastDubbing','CFBundleIdentifier':'app.localdub.desktop','CFBundleName':'LocalDub','CFBundleDisplayName':'LocalDub','CFBundlePackageType':'APPL','CFBundleShortVersionString':VERSION,'CFBundleVersion':'1','CFBundleIconFile':'LocalDub.icns','LSApplicationCategoryType':'public.app-category.music','LSMinimumSystemVersion':'26.0','NSHighResolutionCapable':True,'NSAppTransportSecurity':{'NSAllowsLocalNetworking':True}}
     (contents/'Info.plist').write_bytes(plistlib.dumps(info))
     sdk=subprocess.check_output(['xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip()
     subprocess.run(['xcrun','swiftc','-parse-as-library','-swift-version','5','-O','-target','arm64-apple-macosx26.0','-sdk',sdk,'-module-cache-path',str(module_cache),'-o',str(contents/'MacOS/PodcastDubbing'),str(source/'desktop/App.swift')],check=True)

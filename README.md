@@ -2,8 +2,8 @@
 
 By [Raja Chakraborty](https://github.com/rjchakraborty) · [Portfolio](https://rjchakraborty.github.io/)
 
-Local audio dubbing for Apple Silicon. Turn English recordings into Mandarin
-Chinese or Spanish using on-device speech recognition, translation and reference
+Local audio dubbing for Apple Silicon. Turn recordings into the languages supported
+by the selected engine using on-device speech recognition, translation and reference
 voice synthesis. Review the transcript, repair individual passages and export
 audio with captions.
 
@@ -16,14 +16,32 @@ guarantee identical voice, emotion or meaning; listen to the result before shari
 
 - Local files and direct HTTP(S) audio links, including public or signed S3/GCS links.
 - Up to 20 uploaded files or 200 URLs per batch, processed sequentially to limit memory pressure.
-- Mandarin and Spanish output, configurable pacing, pauses and reference voice.
+- Engine-driven language selection, configurable pacing, pauses and reference voice.
 - Cancel/resume, cached completed stages, transcript/translation corrections and
   selective speech regeneration.
 - MP3, WAV, WebVTT captions and machine-readable review reports in named,
   versioned export folders.
 - Optional public Podbean episode resolver; separately installed source plugins.
 - Persistent multilingual URL batches, sequential processing, pause/retry and organized local exports.
-- Native Mac window with automatic private Python, package and model setup.
+- Native Mac window, Finder/Dock icon, and automatic private Python, package and model setup.
+
+### Output languages
+
+The selector and URL batch language list come from the backend capability matrix.
+Qwen3-TTS supports Mandarin Chinese, English, Japanese, Korean, German, French,
+Russian, Portuguese, Spanish and Italian. The optional IndexTTS 2.5 adapter supports
+Mandarin Chinese, English, Japanese, Spanish and Arabic when installed separately.
+Only languages shared by the speech and translation engines are offered. Existing
+OPUS snapshots support Mandarin and Spanish; the default Hy-MT2 supports all the
+speech targets above. Same-language audio keeps the source transcript without
+paraphrasing it through translation.
+
+`dubbing/languages.json` records reviewed engine capabilities and upstream sources.
+The installed Qwen model's language-token metadata further limits its options.
+No model is loaded or downloaded just to populate the selector. API validation,
+translation prompts, rendering and export names use the same capability source;
+engine upgrades require reviewing that metadata. Model support does not establish
+listening quality in every language.
 
 ## Requirements
 

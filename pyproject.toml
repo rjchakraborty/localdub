@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "localdub"
-version = "0.1.1"
+version = "0.2.0"
 description = "Local audio dubbing and review on Apple Silicon"
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
@@ -23,8 +23,8 @@ dependencies = {file = ["dubbing/requirements.txt"]}
 include = ["dubbing", "dubbing.desktop"]
 
 [tool.setuptools.package-data]
-dubbing = ["index.html", "requirements*.txt"]
-"dubbing.desktop" = ["App.swift"]
+dubbing = ["index.html", "languages.json", "requirements*.txt"]
+"dubbing.desktop" = ["App.swift", "render_icon.swift"]
 
 [tool.pytest.ini_options]
 testpaths = ["dubbing/tests"]

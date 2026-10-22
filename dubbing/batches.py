@@ -7,13 +7,14 @@ from pydantic import BaseModel, ConfigDict, Field
 from .pipeline import read, save
 from .settings import LANGUAGES, Options, home
 from .sources import public_url
+from .languages import validate_language
 
 
 class BatchRequest(BaseModel):
     model_config = ConfigDict(extra='forbid')
     request_id: UUID
     sources: list[str] = Field(min_length=1, max_length=200)
-    languages: list[str] = Field(min_length=1, max_length=2)
+    languages: list[str] = Field(min_length=1, max_length=len(LANGUAGES))
     options: Options
 
 
@@ -24,8 +25,8 @@ def path(batch_id):
 def create(request):
     sources = list(dict.fromkeys(s.strip() for s in request.sources))
     languages = list(dict.fromkeys(request.languages))
-    if any(lang not in LANGUAGES for lang in languages):
-        raise ValueError('Unsupported target language')
+    for language in languages:
+        validate_language(language, request.options.tts_engine, request.options.translation_engine, request.options.quality)
     for source in sources:
         public_url(source)
     payload = {'sources': sources, 'languages': languages, 'options': request.options.model_dump()}

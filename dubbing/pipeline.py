@@ -97,6 +97,14 @@ def prepare_translation(folder, options):
 
 def translate(folder, options):
     transcript=prepare_translation(folder,options)
+    if transcript.get('language') == options.language:
+        # Preserve speech already in the requested language without paraphrasing.
+        path = folder/'translation.json'
+        existing = read(path) if path.exists() else []
+        if len(existing) < len(transcript['segments']):
+            save(path, existing + [{**row, 'translation': row['text'], 'translation_model': 'source_passthrough',
+                'meaning_check': 'Source and target language match; source text retained'} for row in transcript['segments'][len(existing):]])
+        return
     if options.translation_engine in {"opus","madlad","hymt"}:
         from .translation_engines import HunyuanTranslator, MadladTranslator, OpusTranslator, source_sentences
 
@@ -254,7 +262,8 @@ def synthesize(folder, options, only=None):
     audio, sample_rate = sf.read(folder / "source.wav", dtype="float32")
     with (folder/"source.wav").open("rb") as source_reference:
         reference_sha256=hashlib.file_digest(source_reference,"sha256").hexdigest()
-    language = "Chinese" if options.language == "zh" else "Spanish"
+    from .languages import qwen_language
+    language = qwen_language(options.language)
     repairs = read(folder/"synthesis-repairs.json") if (folder/"synthesis-repairs.json").exists() else []
     for i, segment in enumerate(segments):
         if only is not None and i not in only:continue

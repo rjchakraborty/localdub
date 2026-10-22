@@ -1,0 +1,25 @@
+{
+  "languages": {
+    "zh": {"label": "Mandarin Chinese", "export": "Mandarin", "qwen": "Chinese"},
+    "en": {"label": "English", "qwen": "English"},
+    "ja": {"label": "Japanese", "qwen": "Japanese"},
+    "ko": {"label": "Korean", "qwen": "Korean"},
+    "de": {"label": "German", "qwen": "German"},
+    "fr": {"label": "French", "qwen": "French"},
+    "ru": {"label": "Russian", "qwen": "Russian"},
+    "pt": {"label": "Portuguese", "qwen": "Portuguese"},
+    "es": {"label": "Spanish", "qwen": "Spanish"},
+    "it": {"label": "Italian", "qwen": "Italian"},
+    "ar": {"label": "Arabic"}
+  },
+  "tts": {
+    "qwen": {"languages": ["zh", "en", "ja", "ko", "de", "fr", "ru", "pt", "es", "it"], "source": "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base"},
+    "indextts25": {"languages": ["zh", "en", "ja", "es", "ar"], "source": "https://github.com/index-tts/index-tts#readme"}
+  },
+  "translation": {
+    "hymt": {"languages": ["zh", "en", "ja", "ko", "de", "fr", "ru", "pt", "es", "it", "ar"], "source": "https://huggingface.co/tencent/Hy-MT2-7B"},
+    "qwen": {"languages": ["zh", "en", "ja", "ko", "de", "fr", "ru", "pt", "es", "it", "ar"], "source": "https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507"},
+    "madlad": {"languages": ["zh", "en", "ja", "ko", "de", "fr", "ru", "pt", "es", "it", "ar"], "source": "https://huggingface.co/google/madlad400-3b-mt"},
+    "opus": {"languages": ["zh", "es"], "source": "https://huggingface.co/Helsinki-NLP"}
+  }
+}

@@ -149,8 +149,9 @@ def index():
 
 @app.get("/api/config")
 def config():
+    from .languages import language_matrix
     ready=all(os.environ.get(name) and Path(os.environ[name]).exists() for name in ('DUBBING_INDEXTTS_PYTHON','DUBBING_INDEXTTS_MODEL','DUBBING_INDEXTTS_CAMPPLUS','INDEXTTS_W2V_BERT_DIR'))
-    return {"languages": LANGUAGES, "token": TOKEN, "storage": str(home()), "engine": "Local · Whisper → Hy-MT2 translation → Qwen3-TTS / IndexTTS 2.5", "indextts25_available":ready,'preferences_available':True,'export_available':True}
+    return {"languages": LANGUAGES, "language_matrix": language_matrix(), "token": TOKEN, "storage": str(home()), "engine": "Local · Whisper → translation → reference speech", "indextts25_available":ready,'preferences_available':True,'export_available':True}
 
 
 @app.get("/api/jobs")
@@ -160,12 +161,15 @@ def jobs():
 
 @app.get('/api/preferences')
 def preferences():
+    from .languages import supported_languages
+    def defaults():
+        return Options(language=next(iter(supported_languages()))).model_dump()
     path=home()/'preferences.json'
     if path.exists():
         try:return {'options':Options.model_validate(read(path)).model_dump()}
         except (ValueError,TypeError):
-            return {'options':Options(language='zh').model_dump(),'warning':'Saved settings are invalid; defaults loaded. Existing settings file is retained until you save new settings.'}
-    return {'options':Options(language='zh').model_dump()}
+            return {'options':defaults(),'warning':'Saved settings are invalid; defaults loaded. Existing settings file is retained until you save new settings.'}
+    return {'options':defaults()}
 
 
 @app.get('/api/integrations')

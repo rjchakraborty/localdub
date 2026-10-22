@@ -1,9 +1,9 @@
 import os
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from .languages import LANGUAGES, validate_language
 
-LANGUAGES = {"zh": "Mandarin Chinese", "es": "Spanish"}
 ASR_MODEL = "mlx-community/whisper-large-v3-turbo"
 TRANSLATION_MODEL = "mlx-community/Qwen3-4B-Instruct-2507-4bit"
 TTS_MODELS = {
@@ -16,7 +16,7 @@ INDEXTTS_REVISION = "3170ceff8032ab6d0c2945e72068a03ea8c68461"
 
 class Options(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    language: str = Field(pattern="^(zh|es)$")
+    language: str
     quality: str = Field(default="balanced", pattern="^(balanced|quality)$")
     tts_engine: str = Field(default="qwen", pattern="^(qwen|indextts25)$")
     emotion_strength: float = Field(default=0.8, ge=0, le=1)
@@ -35,6 +35,11 @@ class Options(BaseModel):
     gap_audio: str = Field(default="ambient", pattern="^(ambient|original|silence)$")
     seed: int = Field(default=42, ge=0, le=2147483647)
     synthesis_retries: int = Field(default=2, ge=0, le=2)
+
+    @model_validator(mode='after')
+    def supported_target(self):
+        validate_language(self.language, self.tts_engine, self.translation_engine, self.quality)
+        return self
 
 
 def options_for_job(job):

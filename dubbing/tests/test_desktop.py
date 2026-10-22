@@ -39,7 +39,8 @@ def test_dynamic_host_guard_and_preferences_survive_new_client(workspace,monkeyp
     headers={'host':'127.0.0.1:49151','x-dubbing-token':config['token']}
     assert client.post('/api/preferences',json=Options(language='es',temperature=.7).model_dump(),headers=headers).status_code==200
     assert TestClient(app).get('/api/preferences',headers=headers).json()['options']['language']=='es'
-    assert client.post('/api/preferences',json={'language':'fr'},headers=headers).status_code==422
+    assert client.post('/api/preferences',json={'language':'fr'},headers=headers).status_code==200
+    assert client.post('/api/preferences',json={'language':'ar'},headers=headers).status_code==422
     assert client.post('/api/preferences',json={'language':'zh'},headers={'host':'127.0.0.1:49151'}).status_code==403
 
 

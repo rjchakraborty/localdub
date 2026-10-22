@@ -49,7 +49,7 @@ def test_unpublished_manifest_never_runs(root):
 
 def test_invalid_language_creates_nothing(root):
     with pytest.raises(ValueError, match='Unsupported'):
-        batches.create(request(languages=['fr']))
+        batches.create(request(languages=['ar']))
     assert not (root/'jobs').exists()
 
 

@@ -11,8 +11,8 @@ from uuid import uuid4
 
 from .settings import home
 from .privacy import public_metadata
+from .languages import export_label
 
-LABELS={'zh':'Mandarin','es':'Spanish'}
 EXPORT_FILES=['dubbed.mp3','dubbed.wav','translated.vtt','report.json','audit.json','translation.json','source.json']
 
 
@@ -38,7 +38,7 @@ def download_name(folder,name):
     title=source.get('title') or job.get('filename') or 'Podcast'
     if job.get('filename') and title==job['filename']:title=Path(title).stem
     title=safe_title(public_metadata(title))
-    stem=title+'-'+LABELS[job['options']['language']]
+    stem=title+'-'+export_label(job['options']['language'])
     if name.startswith('dubbed.') or name=='translated.vtt':return stem+Path(name).suffix
     return stem+'-'+name
 
@@ -60,7 +60,7 @@ def export_job(folder):
     title=safe_title(public_metadata(raw_title))
     audio_hash=digest(folder/'dubbed.mp3')
     stamp=datetime.fromtimestamp(job['created'],timezone.utc).strftime('%Y%m%d-%H%M%S')
-    parent=root/title/LABELS[job['options']['language']].lower()
+    parent=root/title/export_label(job['options']['language']).lower()
     version=stamp+'-'+job['id'][:8]+'-'+audio_hash[:8]
     target=parent/version
     if target.exists():

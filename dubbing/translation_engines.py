@@ -24,7 +24,8 @@ class HunyuanTranslator:
         from .models import model_path
 
         self.name='mlx-community/Hy-MT2-7B-4bit'
-        self.language={'zh':'Chinese','es':'Spanish'}[language]
+        from .languages import LANGUAGES
+        self.language=LANGUAGES[language]
         self.context=context
         self.rejections=[]
         self.model,self.tokenizer=load(model_path(self.name))

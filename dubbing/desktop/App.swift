@@ -258,7 +258,7 @@ struct LocalWebView: NSViewRepresentable {
                 } else {
                     VStack(alignment: .leading, spacing: 18) {
                         Text("Local podcast dubbing").font(.largeTitle)
-                        Text("Mandarin and Spanish · Apple Silicon · macOS 26+").foregroundStyle(.secondary)
+                        Text("On-device translation · Apple Silicon · macOS 26+").foregroundStyle(.secondary)
                         Text(engine.stage).font(.headline)
                         if engine.running {
                             if let value = engine.progress { ProgressView(value: value) } else { ProgressView() }
