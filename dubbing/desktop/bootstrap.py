@@ -58,7 +58,19 @@ def downloaded_bytes(model, repository):
                 continue
             path=repository/'blobs'/checksum
             if not path.is_file():
-                path=path.with_name(path.name+'.incomplete')
+                # Hub downloads may add a unique suffix before .incomplete.
+                # Count only this weight's largest partial, never duplicate retries.
+                partials=[path.with_name(path.name+'.incomplete'),
+                          *path.parent.glob(checksum+'.*.incomplete')]
+                sizes=[]
+                for partial in partials:
+                    try:
+                        if partial.resolve().is_relative_to(repository) and partial.is_file():
+                            sizes.append(partial.stat().st_size)
+                    except OSError:
+                        continue
+                total+=min(max(sizes,default=0),item['bytes'])
+                continue
         try:
             if path.resolve().is_relative_to(repository) and path.is_file():
                 total+=min(path.stat().st_size,item['bytes'])
