@@ -46,7 +46,7 @@ def transcribe(folder, options):
     from .settings import home
 
     source = read(folder / "source.json")
-    key = transcript_cache_key(source["sha256"],options)
+    key = transcript_cache_key(source.get("processing_sha256", source["sha256"]),options)
     cache = home() / "transcript-cache" / f"{key}.json"
     if cache.exists():
         save(folder / "transcript.json", read(cache))
@@ -61,7 +61,7 @@ def transcribe(folder, options):
     )
     duration = source["duration"]
     segments = segments_from_words(result["segments"], duration, options.max_segment_seconds, options.pause_threshold)
-    transcript = {"language": result.get("language"), "text": result["text"], "segments": segments, "model": ASR_MODEL, "revision": REVISIONS[ASR_MODEL], "source_sha256": source["sha256"]}
+    transcript = {"language": result.get("language"), "text": result["text"], "segments": segments, "model": ASR_MODEL, "revision": REVISIONS[ASR_MODEL], "source_sha256": source["sha256"], "processing_sha256": source.get("processing_sha256", source["sha256"])}
     save(folder / "transcript.json", transcript)
     cache.parent.mkdir(exist_ok=True)
     save(cache, transcript)
@@ -354,15 +354,7 @@ def _run(folder: Path):
     options = options_for_job(job)
     started = time.time()
     progress(folder, "source")
-    if not (folder / "source.json").exists():
-        metadata = resolve(job["source"], folder) if job.get("source") else {"title": job["filename"], "sha256": hashlib.sha256((folder / "input.audio").read_bytes()).hexdigest()}
-        if job.get('catalogue_title'):
-            metadata['title'] = job['catalogue_title']
-            metadata['catalogue_item_id'] = job['catalogue_item_id']
-        metadata.update(probe(folder / "input.audio"))
-        normalize(folder / "input.audio", folder / "source.wav")
-        metadata["signal"] = source_signal(folder / "source.wav")
-        save(folder / "source.json", metadata)
+    prepare_source(folder, job, options)
     for stage in ("transcribe", "translate", "synthesize"):
         progress(folder, stage)
         subprocess.run([sys.executable, "-m", "dubbing.pipeline", "--stage", stage, str(folder)], check=True)
@@ -370,10 +362,30 @@ def _run(folder: Path):
     finish_audio(folder,options,started)
 
 
+def prepare_source(folder, job, options):
+    """Commit source metadata only after decode and optional cleanup succeed."""
+    if not (folder / "source.json").exists():
+        metadata = resolve(job["source"], folder) if job.get("source") else {"title": job["filename"], "sha256": hashlib.sha256((folder / "input.audio").read_bytes()).hexdigest()}
+        if job.get('catalogue_title'):
+            metadata['title'] = job['catalogue_title']
+            metadata['catalogue_item_id'] = job['catalogue_item_id']
+        metadata.update(probe(folder / "input.audio"))
+        from .preprocessing import prepare_audio
+        normalize(folder / "input.audio", folder / "source-original.wav")
+        source_signal(folder / "source-original.wav")
+        progress(folder, "audio_cleanup")
+        metadata['audio_preprocessing'] = prepare_audio(folder / 'source-original.wav', folder / 'source.wav', options)
+        metadata['processing_sha256'] = metadata['audio_preprocessing']['output_sha256']
+        save(folder / 'audio-preprocessing.json', metadata['audio_preprocessing'])
+        metadata["signal"] = source_signal(folder / "source.wav")
+        save(folder / "source.json", metadata)
+
+
 def finish_audio(folder,options,started):
     from .models import REVISIONS
 
     report = assemble(folder, read(folder / "translation.json"), options, read(folder / "source.json")["duration"])
+    report['audio_preprocessing'] = read(folder / 'source.json').get('audio_preprocessing', {'enabled': False, 'legacy': True})
     translation_model = {"opus":f"Helsinki-NLP/opus-mt-en-{options.language}","madlad":"Nextcloud-AI/madlad400-3b-mt-ct2-int8","hymt":"mlx-community/Hy-MT2-7B-4bit","qwen":TRANSLATION_MODEL}[options.translation_engine]
     report.update({"elapsed_this_run_seconds": time.time()-started, "options": options.model_dump(), "models": {"asr": ASR_MODEL, "translation": translation_model, "tts": TTS_MODELS[options.quality]}, "quality_status": "Requires bilingual listening review; automated checks do not establish emotion/voice fidelity", "limitations": ["No automatic speaker diarization or overlapping-voice separation", "Original-gap mode retains breaths/ambient audio between detected passages; it can retain unrecognized source speech. Background under dubbed speech is not separated or remixed", "Reference cloning approximates timbre/prosody; exact emotion and pauses inside a passage are not guaranteed"]})
     if options.tts_engine == 'indextts25':

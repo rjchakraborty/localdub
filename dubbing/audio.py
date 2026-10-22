@@ -147,7 +147,10 @@ class AssemblyBuffer:
 def assemble(folder: Path, segments: list, options, duration: float):
     with ExitStack() as stack:
         buffer = stack.enter_context(AssemblyBuffer(folder))
-        original = stack.enter_context(sf.SoundFile(folder / 'source.wav')) if options.gap_audio != 'silence' else None
+        reference = folder / 'source-original.wav'
+        if not reference.exists():
+            reference = folder / 'source.wav'
+        original = stack.enter_context(sf.SoundFile(reference)) if options.gap_audio != 'silence' else None
         return _assemble(folder, segments, options, duration, buffer, original)
 
 

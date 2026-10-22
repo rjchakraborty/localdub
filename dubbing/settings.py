@@ -35,6 +35,8 @@ class Options(BaseModel):
     gap_audio: str = Field(default="ambient", pattern="^(ambient|original|silence)$")
     seed: int = Field(default=42, ge=0, le=2147483647)
     synthesis_retries: int = Field(default=2, ge=0, le=2)
+    audio_enhancement: bool = True
+    enhancement_strength: str = Field(default="gentle", pattern="^(gentle|balanced|strong)$")
 
     @model_validator(mode='after')
     def supported_target(self):
@@ -44,7 +46,7 @@ class Options(BaseModel):
 
 def options_for_job(job):
     # Jobs created before complete-thought mode keep their original audio slots.
-    values={"semantic_translation":False,**job['options']}
+    values={"semantic_translation":False,"audio_enhancement":False,**job['options']}
     return Options(**values)
 
 

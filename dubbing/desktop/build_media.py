@@ -46,7 +46,8 @@ def build(root):
     env['PKG_CONFIG_LIBDIR']=str(prefix/'lib/pkgconfig')
     binary=destination/'bin/ffmpeg'
     formats=subprocess.check_output([str(binary),'-hide_banner','-muxers'],text=True) if binary.exists() else ''
-    if not all(name in formats.split() for name in ['s16le','f32le','wav','mp3']):
+    filters=subprocess.check_output([str(binary),'-hide_banner','-filters'],text=True) if binary.exists() else ''
+    if not all(name in formats.split() for name in ['s16le','f32le','wav','mp3']) or not all(name in filters.split() for name in ['highpass','afftdn','apad']):
         command(['./configure','--prefix='+str(destination),'--disable-everything','--disable-autodetect','--disable-network','--disable-doc','--disable-debug','--disable-shared','--enable-static','--enable-ffmpeg','--enable-ffprobe','--disable-ffplay','--enable-libmp3lame',
             '--extra-cflags=-I'+str(prefix/'include')+' -mmacosx-version-min=26.0',
             '--extra-ldflags=-L'+str(prefix/'lib')+' -mmacosx-version-min=26.0',
@@ -55,11 +56,14 @@ def build(root):
             '--enable-parser=mpegaudio,aac,aac_latm,flac,vorbis,opus,ac3',
             '--enable-demuxer=mp3,wav,aiff,flac,ogg,mov,aac,matroska,asf,au,ape,wv,ac3,eac3',
             '--enable-encoder=pcm_s16le,pcm_f32le,libmp3lame','--enable-muxer=wav,mp3,pcm_s16le,pcm_f32le',
-            '--enable-filter=abuffer,abuffersink,aresample,atempo,anull,asetpts'],ffmpeg,env)
+            '--enable-filter=abuffer,abuffersink,aresample,atempo,anull,asetpts,highpass,afftdn,apad'],ffmpeg,env)
         command(['make','-j2'],ffmpeg,env);command(['make','install'],ffmpeg,env)
     formats=subprocess.check_output([str(binary),'-hide_banner','-muxers'],text=True)
     if not all(name in formats.split() for name in ['s16le','f32le','wav','mp3']):
         raise ValueError('Built audio tool is missing a required PCM or export format')
+    filters=subprocess.check_output([str(binary),'-hide_banner','-filters'],text=True)
+    if not all(name in filters.split() for name in ['highpass','afftdn','apad']):
+        raise ValueError('Built audio tool is missing voice cleanup filters')
     for name in ['ffmpeg','ffprobe']:
         binary=destination/'bin'/name
         linked=subprocess.check_output(['otool','-L',str(binary)],text=True)
