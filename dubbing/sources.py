@@ -58,25 +58,35 @@ class PublicAddressAdapter(HTTPAdapter):
 @contextmanager
 def get_public(url: str, method="GET"):
     for _ in range(6):
-        address = public_addresses(url)[0]
+        addresses = public_addresses(url)
         parts = urlsplit(url)
         hostname = parts.hostname.encode("idna").decode("ascii")
         host_header = f"[{hostname}]" if ":" in hostname else hostname
         if parts.port:
             host_header += f":{parts.port}"
-        with requests.Session() as session:
-            session.trust_env = False
-            session.mount(parts.scheme+"://",PublicAddressAdapter(address,hostname))
-            with session.request(method,url,headers={"Host":host_header},stream=True,timeout=(15,60),allow_redirects=False) as response:
-                if response.is_redirect:
-                    target = response.headers.get("Location")
-                    if not target:
-                        raise ValueError("Redirect has no destination")
-                    url = urljoin(url,target)
+        for address in addresses[:4]:
+            with requests.Session() as session:
+                session.trust_env = False
+                session.mount(parts.scheme+"://",PublicAddressAdapter(address,hostname))
+                try:
+                    response = session.request(method,url,headers={"Host":host_header},stream=True,timeout=(15,60),allow_redirects=False)
+                except requests.exceptions.SSLError:
+                    raise
+                except (requests.ConnectionError, requests.Timeout) as exc:
+                    last_error = exc
                     continue
-                response.raise_for_status()
-                yield response
-                return
+                with response:
+                    if response.is_redirect:
+                        target = response.headers.get("Location")
+                        if not target:
+                            raise ValueError("Redirect has no destination")
+                        url = urljoin(url,target)
+                        break
+                    response.raise_for_status()
+                    yield response
+                    return
+        else:
+            raise last_error
     raise ValueError("Too many redirects")
 
 
