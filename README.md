@@ -8,7 +8,8 @@ voice synthesis. Review the transcript, repair individual passages and export
 audio with captions.
 
 **Status: preview.** [Download the Mac app](https://github.com/rjchakraborty/localdub/releases).
-The app is ad-hoc signed and not notarized. Human listening acceptance remains pending.
+The 0.3.3 Mac release is Developer ID signed and Apple notarized. Human listening
+acceptance remains pending; check each release's signing and validation records.
 The application aims to retain phrasing, pauses and vocal character. It does not
 guarantee identical voice, emotion or meaning; listen to the result before sharing.
 
@@ -60,8 +61,9 @@ For the packaged app, download the versioned `LocalDub-…-arm64.zip` from the
 check it against `SHA256SUMS`, extract it and copy `LocalDub.app` to Applications.
 Choose a workspace on first launch and let setup download Python, packages and
 models. Setup progress appears in the native window. An external SSD is optional.
-The preview is not notarized, so macOS may block opening it; do not disable
-Gatekeeper. Building from source remains available below.
+The 0.3.3 distribution includes a stapled Apple notarization ticket. Older previews
+and unsigned source builds have different signing status. Do not disable Gatekeeper
+to run a blocked or unverifiable package. Building from source remains available below.
 
 Install Python 3.11 and FFmpeg/ffprobe, then from this checkout:
 
