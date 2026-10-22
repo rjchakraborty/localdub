@@ -4,11 +4,13 @@ import json
 import os
 import secrets
 import signal
+import shutil
 import subprocess
 import sys
 import time
 import uuid
 from contextlib import asynccontextmanager
+from functools import lru_cache
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -22,6 +24,20 @@ from .sources import MAX_BYTES, public_url
 ROOT = Path(__file__).resolve().parent
 FILES = {"dubbed.wav", "dubbed.mp3", "translated.vtt", "report.json", "audit.json", "transcript.json", "translation.json", "source.wav"}
 TOKEN = secrets.token_urlsafe(32)
+
+
+@lru_cache(maxsize=20000)
+def job_summary(path, modified, size):
+    value = read(path)
+    return {'id':value['id'], 'created':value['created'], 'status':value['status']}
+
+
+def job_listing():
+    rows = []
+    for path in (home()/'jobs').glob('*/job.json'):
+        stamp = path.stat()
+        rows.append((path,job_summary(path, stamp.st_mtime_ns, stamp.st_size)))
+    return rows
 
 
 def job_folder(job_id):
@@ -40,7 +56,7 @@ def view(folder):
     source = read(folder/"source.json") if (folder/"source.json").exists() else {}
     progress = read(folder / "progress.json") if (folder / "progress.json").exists() else {}
     qa = read(folder/"audit.json") if (folder/"audit.json").exists() else None
-    return {**job,"title":source.get("title"), "qa": {"passed":qa["passed"],"checks":qa["checks"],"status":qa["status"]} if qa else None,"progress": progress, "files": sorted(p.name for p in folder.iterdir() if p.name in FILES and (job["status"] in {"completed","needs_review"} or p.name not in {"dubbed.wav", "dubbed.mp3", "translated.vtt", "report.json"}))}
+    return {**job,"title":source.get("title") or job.get("catalogue_title"), "qa": {"passed":qa["passed"],"checks":qa["checks"],"status":qa["status"]} if qa else None,"progress": progress, "files": sorted(p.name for p in folder.iterdir() if p.name in FILES and (job["status"] in {"completed","needs_review"} or p.name not in {"dubbed.wav", "dubbed.mp3", "translated.vtt", "report.json"}))}
 
 
 class Queue:
@@ -51,8 +67,10 @@ class Queue:
 
     async def work(self):
         while True:
-            folders = sorted((home() / "jobs").glob("*/job.json"), key=lambda p: p.stat().st_mtime)
-            for job_path in folders:
+            folders = sorted(job_listing(), key=lambda pair: pair[1]['created'])
+            for job_path, summary in folders:
+                if summary['status'] != 'queued':
+                    continue
                 job = read(job_path)
                 if job["status"] != "queued":
                     continue
@@ -60,6 +78,12 @@ class Queue:
                 if not runnable(job):
                     continue
                 folder = job_path.parent
+                if job.get('batch_id') and shutil.disk_usage(home()).free < 10*1024**3:
+                    from .batches import control
+                    control(job['batch_id'],'pause')
+                    job['error'] = 'Batch paused: less than 10 GiB free. Free workspace storage, then Resume batch.'
+                    save(job_path, job)
+                    continue
                 self.active = job["id"]
                 job.update(status="running", error=None)
                 save(job_path, job)
@@ -155,8 +179,18 @@ def config():
 
 
 @app.get("/api/jobs")
-def jobs():
-    return sorted([view(p.parent) for p in (home()/"jobs").glob("*/job.json")], key=lambda j: j["created"], reverse=True)
+def jobs(offset: int = 0, limit: int = 50):
+    if offset < 0 or not 1 <= limit <= 100:
+        raise HTTPException(422, 'Use a nonnegative offset and limit from 1 to 100')
+    rows = sorted(job_listing(),
+                  key=lambda pair:pair[1]['created'], reverse=True)
+    # Always show the running job even while paging older results.
+    selected = rows[offset:offset+limit]
+    if offset == 0 and queue.active:
+        active = next((pair for pair in rows if pair[1]['id'] == queue.active), None)
+        if active and active not in selected:
+            selected = [active, *selected[:limit-1]]
+    return [view(p.parent) for p,_ in selected]
 
 
 @app.get('/api/preferences')
@@ -195,6 +229,46 @@ def update_integrations(value: IntegrationUpdate):
 
 from .batches import BatchRequest
 batch_creation_lock = asyncio.Lock()
+catalogue_scan_lock = asyncio.Lock()
+
+
+class CatalogueScan(BaseModel):
+    plugin: str = Field(min_length=1, max_length=80)
+    provider: str = Field(min_length=1, max_length=80)
+
+
+@app.get('/api/catalogues/providers')
+def catalogue_providers():
+    from .catalogues import providers
+    return providers()
+
+
+@app.post('/api/catalogues/scan')
+async def scan_catalogue(request: CatalogueScan):
+    from .catalogues import scan
+    if catalogue_scan_lock.locked():
+        raise HTTPException(409, 'A catalogue scan is already running')
+    try:
+        async with catalogue_scan_lock:
+            return await asyncio.to_thread(scan, request.plugin, request.provider)
+    except Exception:
+        # Provider exceptions may include passwords, DSNs or access-token URLs.
+        raise HTTPException(422, 'Catalogue import failed. Check private plugin configuration and connectivity; no partial catalogue was queued.')
+
+
+from .batches import CatalogueBatchRequest
+
+
+@app.post('/api/catalogues/batches', status_code=201)
+async def create_catalogue_batch(request: CatalogueBatchRequest):
+    from .batches import create_catalogue
+    if request.options.tts_engine == 'indextts25' and not config()['indextts25_available']:
+        raise HTTPException(422, 'IndexTTS runtime is not configured')
+    try:
+        async with batch_creation_lock:
+            return await asyncio.to_thread(create_catalogue, request)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(422, str(exc))
 
 
 @app.post('/api/batches', status_code=201)

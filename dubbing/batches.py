@@ -1,5 +1,6 @@
 """Durable URL batches using the existing single-worker job queue."""
 import time
+from functools import lru_cache
 from uuid import UUID, uuid5
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -30,7 +31,11 @@ def create(request):
     for source in sources:
         public_url(source)
     payload = {'sources': sources, 'languages': languages, 'options': request.options.model_dump()}
-    target = path(request.request_id)
+    return materialize(request.request_id, payload)
+
+
+def materialize(request_id, payload, items=None, catalogue=None):
+    target = path(request_id)
     if target.exists():
         previous = read(target)
         if previous['request'] != payload:
@@ -39,38 +44,75 @@ def create(request):
     # Jobs cannot run until the final manifest is atomically published.
     rows = []
     created = time.time()
-    for index, source in enumerate(sources):
-        for language in languages:
-            job_id = str(uuid5(request.request_id, f'{index}:{language}'))
+    items = items or [{'id':str(i),'source':s} for i,s in enumerate(payload['sources'])]
+    for index, item in enumerate(items):
+        for language in payload['languages']:
+            job_id = str(uuid5(request_id, f'{index}:{language}'))
             folder = home()/'jobs'/job_id
             folder.mkdir(parents=True, exist_ok=True)
-            job = {'id': job_id, 'batch_id': str(request.request_id),
-                   'source': source, 'filename': None,
+            job = {'id': job_id, 'batch_id': str(request_id),
+                   'source': item['source'], 'filename': None,
+                   'catalogue_item_id':item['id'] if catalogue else None,
+                   'catalogue_title':item.get('title'),
                    'options': {**payload['options'], 'language': language},
                    'status': 'queued', 'created': created + len(rows)*0.001, 'error': None}
             save(folder/'job.json', job)
             rows.append(job_id)
-    batch = {'id': str(request.request_id), 'created': created, 'paused': False,
+    batch = {'id': str(request_id), 'created': created, 'paused': False,
              'request': payload, 'jobs': rows}
+    if catalogue:
+        batch['catalogue'] = catalogue
     target.parent.mkdir(parents=True, exist_ok=True)
     save(target, batch)
     return describe(batch)
+
+
+class CatalogueBatchRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    request_id: UUID
+    catalogue_id: UUID
+    options: Options
+
+
+def create_catalogue(request):
+    from .catalogues import read_snapshot
+    snapshot = read_snapshot(request.catalogue_id)
+    payload = {'catalogue_id':str(request.catalogue_id), 'languages':[request.options.language],
+               'options':request.options.model_dump()}
+    return materialize(request.request_id, payload, snapshot['items'],
+                       {'plugin':snapshot['plugin'],'provider':snapshot['provider'],'id':snapshot['id']})
 
 
 def runnable(job):
     if not job.get('batch_id'):
         return True
     target = path(job['batch_id'])
-    return target.exists() and not read(target)['paused']
+    try:
+        stamp = target.stat()
+    except FileNotFoundError:
+        return False
+    return _runnable(target, stamp.st_mtime_ns, stamp.st_size)
+
+
+@lru_cache(maxsize=100)
+def _runnable(target, modified, size):
+    return not read(target)['paused']
 
 
 def describe(batch):
-    jobs = [read(home()/'jobs'/job_id/'job.json') for job_id in batch['jobs']]
     counts = {}
-    for job in jobs:
-        counts[job['status']] = counts.get(job['status'], 0) + 1
+    for job_id in batch['jobs']:
+        target = home()/'jobs'/job_id/'job.json'
+        stamp = target.stat()
+        status = _status(target, stamp.st_mtime_ns, stamp.st_size)
+        counts[status] = counts.get(status, 0) + 1
     return {'id': batch['id'], 'created': batch['created'], 'paused': batch['paused'],
-            'counts': counts, 'total': len(jobs), 'jobs': batch['jobs']}
+            'counts': counts, 'total': len(batch['jobs']), 'jobs': batch['jobs']}
+
+
+@lru_cache(maxsize=20000)
+def _status(target, modified, size):
+    return read(target)['status']
 
 
 def control(batch_id, action):

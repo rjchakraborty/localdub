@@ -23,6 +23,7 @@ guarantee identical voice, emotion or meaning; listen to the result before shari
   versioned export folders.
 - Optional public Podbean episode resolver; separately installed source plugins.
 - Persistent multilingual URL batches, sequential processing, pause/retry and organized local exports.
+- Optional private catalogue plugins: import up to 10,000 episode metadata records, choose a language, then download, dub and export one episode at a time. See [integration setup](docs/INTEGRATIONS.md).
 - Native Mac window, Finder/Dock icon, and automatic private Python, package and model setup.
 
 ### Output languages

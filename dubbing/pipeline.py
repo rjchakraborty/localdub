@@ -356,6 +356,9 @@ def _run(folder: Path):
     progress(folder, "source")
     if not (folder / "source.json").exists():
         metadata = resolve(job["source"], folder) if job.get("source") else {"title": job["filename"], "sha256": hashlib.sha256((folder / "input.audio").read_bytes()).hexdigest()}
+        if job.get('catalogue_title'):
+            metadata['title'] = job['catalogue_title']
+            metadata['catalogue_item_id'] = job['catalogue_item_id']
         metadata.update(probe(folder / "input.audio"))
         normalize(folder / "input.audio", folder / "source.wav")
         metadata["signal"] = source_signal(folder / "source.wav")
